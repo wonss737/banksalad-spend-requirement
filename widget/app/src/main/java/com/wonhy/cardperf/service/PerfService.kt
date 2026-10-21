@@ -1,16 +1,20 @@
 package com.wonhy.cardperf.service
 
 import android.accessibilityservice.AccessibilityService
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import com.wonhy.cardperf.policy.RefreshPolicy
+import com.wonhy.cardperf.policy.SessionGuards
 import com.wonhy.cardperf.store.PerfStore
 import com.wonhy.cardperf.widget.PerfWidgetProvider
 
@@ -26,17 +30,14 @@ class PerfService : AccessibilityService() {
     private val unlockReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != Intent.ACTION_USER_PRESENT) return
-            val now = System.currentTimeMillis()
-            if (!RefreshPolicy.shouldAutoRefresh(now, store.lastAttemptAt)) {
+            // Keeps "N시간 전", 오래됨 and 지난달 current even when no refresh runs.
+            PerfWidgetProvider.updateAll(this@PerfService)
+            if (!RefreshPolicy.shouldAutoRefresh(System.currentTimeMillis(), store.lastAttemptAt)) {
                 Log.i(RefreshSession.TAG, "skip: cooldown")
                 return
             }
-            if (inCall()) {
-                Log.i(RefreshSession.TAG, "skip: in call")
-                return
-            }
-            // Let the launcher settle after unlock before taking the screen.
-            handler.postDelayed({ requestRefresh(manual = false) }, UNLOCK_DELAY_MS)
+            // Let the launcher settle after unlock, then take the screen only from home.
+            handler.postDelayed(::maybeStartAuto, UNLOCK_DELAY_MS)
         }
     }
 
@@ -50,16 +51,38 @@ class PerfService : AccessibilityService() {
         PerfWidgetProvider.updateAll(this)
     }
 
-    fun requestRefresh(manual: Boolean) {
-        if (session != null) {
-            Log.i(RefreshSession.TAG, "skip: refresh already running")
+    private fun maybeStartAuto() {
+        val foreground = windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            ?.root?.packageName?.toString()
+        val launcher = launcherPackage()
+        val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+        if (!SessionGuards.canStartAuto(foreground, launcher, inCall(), locked)) {
+            Log.i(RefreshSession.TAG, "skip: foreground=$foreground launcher=$launcher locked=$locked")
             return
         }
-        session = RefreshSession(this, store, manual) {
-            session = null
+        requestRefresh(manual = false)
+    }
+
+    fun requestRefresh(manual: Boolean) {
+        session?.let {
+            if (it.isRunning) {
+                Log.i(RefreshSession.TAG, "skip: refresh already running")
+                return
+            }
+            // A finished session may still have cleanup HOME checks queued; they must not
+            // act on the session we are about to start.
+            it.dispose()
+        }
+        session = RefreshSession(this, store, manual, ::inCall) {
             PerfWidgetProvider.updateAll(this)
         }.also { it.start() }
     }
+
+    private fun launcherPackage(): String? =
+        packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName
 
     private fun inCall(): Boolean {
         val mode = getSystemService(AudioManager::class.java).mode
@@ -73,6 +96,7 @@ class PerfService : AccessibilityService() {
 
     override fun onDestroy() {
         session?.cancel()
+        session?.dispose()
         runCatching { unregisterReceiver(unlockReceiver) }
         handler.removeCallbacksAndMessages(null)
         if (instance === this) instance = null

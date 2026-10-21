@@ -8,9 +8,11 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import com.wonhy.cardperf.parse.PerfParser
 import com.wonhy.cardperf.policy.LastResult
 import com.wonhy.cardperf.policy.ReadStabilizer
+import com.wonhy.cardperf.policy.SessionGuards
 import com.wonhy.cardperf.store.PerfStore
 
 /** One refresh run: launch banksalad, poll the accessibility tree, store, then clean up. */
@@ -18,6 +20,7 @@ class RefreshSession(
     private val service: AccessibilityService,
     private val store: PerfStore,
     private val manual: Boolean,
+    private val inCall: () -> Boolean,
     private val onFinished: () -> Unit,
 ) {
     private val handler = Handler(Looper.getMainLooper())
@@ -25,8 +28,12 @@ class RefreshSession(
     private val stabilizer = ReadStabilizer()
     private var startedAt = 0L
     private var perfScreenSeen = false
+    private var banksaladSeen = false
     private var tabClicked = false
     private var finished = false
+
+    /** False once finish() ran; cleanup callbacks may still be pending until [dispose]. */
+    val isRunning: Boolean get() = !finished
 
     fun start() {
         startedAt = SystemClock.elapsedRealtime()
@@ -49,10 +56,27 @@ class RefreshSession(
 
     fun cancel() = finish(LastResult.CANCELED, "user")
 
+    /** Drops every pending callback of this session, including post-finish cleanup. */
+    fun dispose() {
+        handler.removeCallbacksAndMessages(null)
+        overlay.hide()
+    }
+
     private fun poll() {
         if (finished) return
         try {
             val elapsed = SystemClock.elapsedRealtime() - startedAt
+            val foreground = foregroundAppPackage()
+            if (foreground == BANKSALAD) banksaladSeen = true
+            if (!manual && inCall()) {
+                finish(LastResult.FAILED, "call")
+                return
+            }
+            // Someone else took the screen (user switched apps, call UI, alarm): stop quietly.
+            if (banksaladSeen && foreground != null && foreground != BANKSALAD) {
+                finish(LastResult.FAILED, "left")
+                return
+            }
             val texts = readBanksaladTexts()
             if (PerfParser.isPerfScreen(texts)) {
                 perfScreenSeen = true
@@ -89,22 +113,16 @@ class RefreshSession(
         try {
             store.lastResult = result
             store.failReason = reason
-            val keepScreen = manual && result == LastResult.SUCCESS
-            if (!keepScreen) {
-                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-                handler.postDelayed({
-                    service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-                    overlay.hide()
-                }, HOME_DELAY_MS)
-                // A launch still in flight (e.g. cancelled within a second) can surface banksalad
-                // after we went home; send it home again, but only while banksalad is in front.
-                for (i in 1..LATE_LAUNCH_CHECKS) {
-                    handler.postDelayed({
-                        if (service.rootInActiveWindow?.packageName == BANKSALAD) {
-                            service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-                        }
-                    }, HOME_DELAY_MS + i * POLL_MS)
-                }
+            // BACK/HOME only ever act on banksalad, and never in a manual session.
+            goHomeIfBanksaladInFront(withBack = true)
+            handler.postDelayed({
+                goHomeIfBanksaladInFront(withBack = false)
+                overlay.hide()
+            }, HOME_DELAY_MS)
+            // A launch still in flight (e.g. cancelled within a second) can surface banksalad
+            // after we went home; send it home again while it is in front.
+            for (i in 1..LATE_LAUNCH_CHECKS) {
+                handler.postDelayed({ goHomeIfBanksaladInFront(withBack = false) }, HOME_DELAY_MS + i * POLL_MS)
             }
         } catch (e: Exception) {
             Log.w(TAG, "finish cleanup failed", e)
@@ -115,6 +133,20 @@ class RefreshSession(
             onFinished()
         }
     }
+
+    private fun goHomeIfBanksaladInFront(withBack: Boolean) {
+        if (!SessionGuards.shouldSendGlobalActions(manual, foregroundAppPackage())) return
+        if (withBack) service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+        else service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+    }
+
+    /**
+     * Package of the top-most application window. Our overlay is an accessibility overlay, not
+     * an application window, so it is skipped even after the user touches it.
+     */
+    private fun foregroundAppPackage(): String? =
+        service.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            ?.root?.packageName?.toString()
 
     private fun banksaladRoots(): List<AccessibilityNodeInfo> =
         service.windows.mapNotNull { it.root }.filter { it.packageName == BANKSALAD }
@@ -142,7 +174,7 @@ class RefreshSession(
 
     companion object {
         const val TAG = "CardPerf"
-        const val BANKSALAD = "com.rainist.banksalad2"
+        const val BANKSALAD = SessionGuards.BANKSALAD
         const val DEEP_LINK =
             "banksalad://webview?url=https%3A%2F%2Fwebview.banksalad.com%2Fcard%3Ftab%3Dbenefit"
         private const val BENEFIT_TAB = "카드 혜택"

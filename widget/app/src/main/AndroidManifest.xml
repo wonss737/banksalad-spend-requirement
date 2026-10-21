@@ -4,6 +4,11 @@
     <!-- Android 11+ package visibility: needed to start banksalad's deep link. -->
     <queries>
         <package android:name="com.rainist.banksalad2" />
+        <!-- Resolve the default launcher: auto refresh only starts from the home screen. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
     </queries>
 
     <application
