@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Smiling card with a salad sprout. Safe zone is the central 66dp circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- sprout stem -->
+    <path
+        android:pathData="M54,40 L54,31"
+        android:strokeColor="#2E9E62"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <!-- left leaf -->
+    <path
+        android:fillColor="#3CC47C"
+        android:pathData="M54,33 C49,33 44,30 43,24 C49,24 53,27 54,33 Z" />
+    <!-- right leaf -->
+    <path
+        android:fillColor="#5BDB93"
+        android:pathData="M54,31 C56,25 61,22 67,23 C66,29 60,32 54,31 Z" />
+    <!-- card shadow -->
+    <path
+        android:fillColor="#3FA874"
+        android:pathData="M37,41 L75,41 A8,8 0 0 1 83,49 L83,72 A8,8 0 0 1 75,80 L37,80 A8,8 0 0 1 29,72 L29,49 A8,8 0 0 1 37,41 Z" />
+    <!-- card body -->
+    <path
+        android:fillColor="#FFFDF4"
+        android:pathData="M35,38 L73,38 A8,8 0 0 1 81,46 L81,69 A8,8 0 0 1 73,77 L35,77 A8,8 0 0 1 27,69 L27,46 A8,8 0 0 1 35,38 Z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#2D3A33"
+        android:pathData="M45,52 m-3,0 a3,3.4 0 1 0 6,0 a3,3.4 0 1 0 -6,0" />
+    <path
+        android:fillColor="#2D3A33"
+        android:pathData="M63,52 m-3,0 a3,3.4 0 1 0 6,0 a3,3.4 0 1 0 -6,0" />
+    <!-- eye sparkles -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46,50.6 m-1,0 a1,1 0 1 0 2,0 a1,1 0 1 0 -2,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M64,50.6 m-1,0 a1,1 0 1 0 2,0 a1,1 0 1 0 -2,0" />
+    <!-- blush -->
+    <path
+        android:fillColor="#FFB3B8"
+        android:pathData="M38.5,58 m-3.5,0 a3.5,2.2 0 1 0 7,0 a3.5,2.2 0 1 0 -7,0" />
+    <path
+        android:fillColor="#FFB3B8"
+        android:pathData="M69.5,58 m-3.5,0 a3.5,2.2 0 1 0 7,0 a3.5,2.2 0 1 0 -7,0" />
+    <!-- smile -->
+    <path
+        android:pathData="M50,56.5 Q54,61 58,56.5"
+        android:strokeColor="#2D3A33"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round" />
+    <!-- progress track and fill -->
+    <path
+        android:fillColor="#E3F1E8"
+        android:pathData="M37,66 L71,66 A2,2 0 0 1 71,70 L37,70 A2,2 0 0 1 37,66 Z" />
+    <path
+        android:fillColor="#3CC47C"
+        android:pathData="M37,66 L60,66 A2,2 0 0 1 60,70 L37,70 A2,2 0 0 1 37,66 Z" />
+</vector>

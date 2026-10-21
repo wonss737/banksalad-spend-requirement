@@ -48,7 +48,7 @@ class MainActivity : Activity() {
         val enabled = PerfService.instance != null
         val snapshot = store.snapshot
         info.text = buildString {
-            appendLine(if (enabled) "접근성 서비스: 켜짐" else "접근성 서비스: 꺼짐 — 설정 > 접근성 > 설치된 앱 > '카드 실적 위젯'을 켜 주세요.")
+            appendLine(if (enabled) "접근성 서비스: 켜짐" else "접근성 서비스: 꺼짐 — 설정 > 접근성 > 설치된 앱 > '뱅크샐러드 카드 실적 위젯'을 켜 주세요.")
             appendLine()
             appendLine(WidgetStatus.statusLine(System.currentTimeMillis(), store.lastSuccessAt, store.lastResult, store.failReason))
             store.failReason?.let { appendLine("실패 사유: $it") }
@@ -57,7 +57,7 @@ class MainActivity : Activity() {
                 appendLine("· ${c.name}: ${c.used}원 / ${c.goalText} — ${if (c.done) "완료" else "${c.remaining}원 남음"}")
             }
             appendLine()
-            appendLine("홈 화면을 길게 눌러 '위젯'에서 '카드 실적 위젯'을 추가할 수 있어요.")
+            appendLine("홈 화면을 길게 눌러 '위젯'에서 '뱅크샐러드 카드 실적 위젯'을 추가할 수 있어요.")
         }
     }
 }
