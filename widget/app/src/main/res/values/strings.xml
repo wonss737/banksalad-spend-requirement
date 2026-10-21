@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">카드 실적 위젯</string>
+    <string name="service_label">카드 실적 위젯</string>
+    <string name="service_description">뱅크샐러드 \'실적 관리\' 화면의 카드별 실적 글자를 읽어 홈 위젯에 표시합니다. 뱅크샐러드 외의 앱은 읽지 않습니다.</string>
+    <string name="widget_description">뱅크샐러드 카드별 월 실적</string>
+</resources>
