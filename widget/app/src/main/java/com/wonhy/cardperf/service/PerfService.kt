@@ -43,6 +43,8 @@ class PerfService : AccessibilityService() {
     override fun onServiceConnected() {
         store = PerfStore(this)
         instance = this
+        // onServiceConnected can run again on rebind; never hold two registrations.
+        runCatching { unregisterReceiver(unlockReceiver) }
         registerReceiver(unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT))
         Log.i(RefreshSession.TAG, "service connected")
         PerfWidgetProvider.updateAll(this)
